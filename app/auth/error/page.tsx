@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 
-export default function AuthErrorPage({
+export default async function AuthErrorPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: Promise<{ error?: string }>;
 }) {
+  const params = await searchParams;
   const message =
-    searchParams.error === "AccessDenied"
+    params.error === "AccessDenied"
       ? "Please sign in with an @estin email address."
       : "Unable to sign in. Please try again.";
 

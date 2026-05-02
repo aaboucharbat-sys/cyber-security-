@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// تم حذف استيراد Geist المسبب للمشاكل
 
 export const metadata: Metadata = {
   title: "Cyber-Matrix | Advanced Cybersecurity Defense",
-  description:
-    "Secure sign-in, quiz access, and leaderboard management for @estin users.",
+  description: "Secure sign-in, quiz access, and leaderboard management for @estin users.",
 };
 
 export default function RootLayout({
@@ -25,10 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className="h-full antialiased">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -45,7 +32,7 @@ export default function RootLayout({
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body style={{ fontFamily: "'Roboto Mono', monospace" }} className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>
     </html>
