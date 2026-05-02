@@ -9,7 +9,7 @@
   --text-primary: #ffffff;
   --text-secondary: #a0a0a0;
   --shadow-neon: 0 0 30px rgba(0, 255, 136, 0.5);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: 'Roboto Mono', monospace;
 }
 
 * {
