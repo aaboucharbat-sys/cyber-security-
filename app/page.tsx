@@ -162,7 +162,7 @@ export default function Home() {
       <nav className="navbar">
         <div className="nav-container">
           <div className="logo">
-            <i className="fas fa-shield-alt"></i> CYBER-MATRIX
+            <i className="fas fa-shield-alt"></i> CYBER-sécurité
           </div>
           <div className="nav-links">
             <Link href="#home">Accueil</Link>
@@ -203,17 +203,11 @@ export default function Home() {
 
       <section id="home" className="hero">
         <div>
-          <h1>CYBER-MATRIX</h1>
+          <h1>CYBER-sécurité</h1>
           <p>
             Bienvenue dans l'ère de l'information. Vos données sont aujourd'hui
             plus précieuses que l'or.
           </p>
-          <div className="shield-container">
-            <div className="shield-glow"></div>
-            <div className="digital-shield">
-              <div className="loading-text">SYSTÈME EN CHARGEMENT...</div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -231,9 +225,7 @@ export default function Home() {
       </section>
 
       <section id="intro" className="section">
-        <h2 className="section-title">
-          Les Menaces Courantes 
-        </h2>
+        <h2 className="section-title">Les Menaces Courantes</h2>
         <div className="grid">
           <div className="glass-card">
             <h3>
@@ -268,9 +260,7 @@ export default function Home() {
       </section>
 
       <section id="layers" className="section">
-        <h2 className="section-title">
-          Les Piliers de la Protection 
-        </h2>
+        <h2 className="section-title">Les Piliers de la Protection</h2>
         <div className="grid">
           <div className="glass-card">
             <h3>
