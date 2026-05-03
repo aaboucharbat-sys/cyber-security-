@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 
 export default async function AuthErrorPage({
@@ -10,7 +8,7 @@ export default async function AuthErrorPage({
   const params = await searchParams;
   const message =
     params.error === "AccessDenied"
-      ? "Please sign in with an @estin email address."
+      ? "Please sign in with an @estin.dz email address."
       : "Unable to sign in. Please try again.";
 
   return (

@@ -45,4 +45,44 @@ export const questions: QuizQuestion[] = [
     ],
     correct: 2,
   },
+  {
+    question: "What is a zero-day vulnerability?",
+    options: [
+      "A vulnerability known for zero days",
+      "A vulnerability with no known fix",
+      "A vulnerability that takes zero days to exploit",
+      "A vulnerability in day-zero patches",
+    ],
+    correct: 1,
+  },
+  {
+    question: "Which of these is NOT a type of malware?",
+    options: ["Virus", "Trojan", "Firewall", "Worm"],
+    correct: 2,
+  },
+  {
+    question: "What does MFA stand for?",
+    options: [
+      "Multi-Factor Authentication",
+      "Main Firewall Access",
+      "Malware Free Application",
+      "Managed File Archive",
+    ],
+    correct: 0,
+  },
+  {
+    question: "What is the primary purpose of a VPN?",
+    options: [
+      "To speed up internet connection",
+      "To encrypt internet traffic",
+      "To block ads",
+      "To manage passwords",
+    ],
+    correct: 1,
+  },
+  {
+    question: "Which protocol is used for secure web browsing?",
+    options: ["HTTP", "FTP", "HTTPS", "SMTP"],
+    correct: 2,
+  },
 ];

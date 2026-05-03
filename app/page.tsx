@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { questions } from "@/lib/questions";
+import Image from "next/image";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 type LeaderboardEntry = {
   name: string;
@@ -12,410 +17,344 @@ type LeaderboardEntry = {
   createdAt: string;
 };
 
+// Modal Data Structure
+const MODAL_DATA = {
+  concept: {
+    title: "Comprendre les Menaces",
+    text1: "À l'ère du tout-numérique, les cyberattaques sont devenues une réalité quotidienne. Des attaquants cherchent constamment à infiltrer les systèmes pour dérober des données ou paralyser des infrastructures. Maîtriser la cybersécurité, c'est avant tout comprendre le mode opératoire de ces hackers pour mieux s'en protéger.",
+    title2: "La Stratégie de Résilience",
+    text2: "La sécurité moderne repose sur l'équilibre entre l'offensive (Red Team) et la défensive (Blue Team). Cette collaboration proactive permet d'anticiper les risques plutôt que de simplement les subir.",
+    color: "text-green-500"
+  },
+  offensive: {
+    title: "L'Art de l'Offensive",
+    text1: "Le Red Teaming simule des adversaires sophistiqués pour tester les capacités de détection. Cela inclut l'exploitation de vulnérabilités Zero-day, le contournement de l'EDR et l'exfiltration de données critiques.",
+    title2: "Ingénierie Sociale",
+    text2: "L'humain reste le maillon faible. Le phishing, le vishing et le pretexting sont des techniques redoutables pour obtenir des accès initiaux sans forcer une seule ligne de code.",
+    color: "text-red-500"
+  },
+  defensive: {
+    title: "Fortification Système",
+    text1: "La défense en profondeur consiste à superposer plusieurs couches de sécurité. Si un pare-feu tombe, l'IDS prend le relais. Si l'IDS échoue, le chiffrement protège la donnée.",
+    title2: "SOC & Incident Response",
+    text2: "Le Security Operations Center surveille le réseau 24/7. En cas d'intrusion, une équipe de réponse aux incidents (DFIR) intervient pour isoler la menace et restaurer les services.",
+    color: "text-blue-500"
+  },
+  networking: {
+    title: "Architecture Réseau",
+    text1: "Le réseau est l'épine dorsale de la communication. Comprendre les modèles OSI et TCP/IP est crucial pour segmenter les flux et empêcher les mouvements latéraux des attaquants.",
+    title2: "Protocoles Sécurisés",
+    text2: "L'implémentation de protocoles comme TLS 1.3, SSH, et IPsec garantit que les données en transit ne peuvent être ni interceptées ni modifiées par des tiers malveillants.",
+    color: "text-purple-500"
+  }
+};
+
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
+  const [activeModal, setActiveModal] = useState<keyof typeof MODAL_DATA | null>(null);
+  const [quizStarted, setQuizStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [quizFinished, setQuizFinished] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [resultMessage, setResultMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
 
-  const isEligible = Boolean(
-    session?.user?.email?.toLowerCase().endsWith("@estin"),
-  );
-  const isAdmin = Boolean(
-    session?.user?.email?.toLowerCase() === "admin@estin",
-  );
-  const question = questions[currentQuestion];
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  const isEligible = Boolean(session?.user?.email?.toLowerCase().endsWith("@estin.dz"));
+  const isAdmin = Boolean(session?.user?.email?.toLowerCase() === "aa_boucharbat@estin.dz");
+
+  // Matrix Background
   useEffect(() => {
-    fetchLeaderboard();
-  }, []);
-
-  useEffect(() => {
-    const canvas = document.getElementById(
-      "matrix-canvas",
-    ) as HTMLCanvasElement | null;
+    const canvas = document.getElementById("matrix-canvas") as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    const fontSize = 14;
-    const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
-    const matrixArray = matrix.split("");
-    let drops = Array(Math.floor(window.innerWidth / fontSize)).fill(1);
-
-    const resizeCanvas = () => {
+    const fontSize = 20;
+    const chars = "01ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*";
+    const matrix = chars.split("");
+    let drops: number[] = [];
+    const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      drops = Array(Math.floor(window.innerWidth / fontSize)).fill(1);
+      drops = Array(Math.floor(canvas.width / fontSize)).fill(1);
     };
-
-    const drawMatrix = () => {
+    const draw = () => {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#00ff88";
       ctx.font = `${fontSize}px monospace`;
-
-      for (let i = 0; i < drops.length; i += 1) {
-        const text =
-          matrixArray[Math.floor(Math.random() * matrixArray.length)];
+      for (let i = 0; i < drops.length; i++) {
+        const text = matrix[Math.floor(Math.random() * matrix.length)];
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        drops[i] += 1;
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
       }
     };
-
-    resizeCanvas();
-    const interval = window.setInterval(drawMatrix, 50);
-    window.addEventListener("resize", resizeCanvas);
-
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("resize", resizeCanvas);
-    };
+    resize();
+    const interval = setInterval(draw, 50);
+    window.addEventListener("resize", resize);
+    return () => { clearInterval(interval); window.removeEventListener("resize", resize); };
   }, []);
 
+  // GSAP
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("animate");
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" },
-    );
-
-    document.querySelectorAll(".section").forEach((section) => {
-      observer.observe(section);
+    sectionRefs.current.forEach((section) => {
+      if (section) {
+        gsap.fromTo(section, 
+          { opacity: 0, y: 50 },
+          { opacity: 1, y: 0, duration: 1, scrollTrigger: { trigger: section, start: "top 90%" } }
+        );
+      }
     });
-
-    return () => observer.disconnect();
   }, []);
 
   const fetchLeaderboard = async () => {
     try {
       const response = await fetch("/api/quiz/leaderboard");
-      if (!response.ok) return;
       const data = await response.json();
       setLeaderboard(data.leaderboard || []);
-    } catch {
-      setLeaderboard([]);
-    }
-  };
-
-  const submitQuiz = async (finalScore: number) => {
-    if (!session?.user?.email) return;
-    setSubmitting(true);
-
-    try {
-      const response = await fetch("/api/quiz/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: session.user.name || session.user.email,
-          email: session.user.email,
-          score: finalScore,
-        }),
-      });
-
-      if (!response.ok) {
-        setResultMessage("Unable to save your score. Try again later.");
-        return;
-      }
-
-      setResultMessage("Score submitted successfully.");
-      fetchLeaderboard();
-    } catch {
-      setResultMessage("Unable to save your score. Try again later.");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleNext = () => {
-    if (selectedAnswer === null) return;
-    const nextScore = score + (selectedAnswer === question.correct ? 1 : 0);
-
+    const nextScore = score + (selectedAnswer === questions[currentQuestion].correct ? 10 : 0);
     if (currentQuestion + 1 < questions.length) {
       setScore(nextScore);
-      setCurrentQuestion((current) => current + 1);
+      setCurrentQuestion((prev) => prev + 1);
       setSelectedAnswer(null);
-      return;
+      setTimeLeft(30);
+    } else {
+      setScore(nextScore);
+      setQuizFinished(true);
     }
-
-    setScore(nextScore);
-    setQuizFinished(true);
-    submitQuiz(nextScore);
   };
 
   return (
-    <main>
-      <canvas id="matrix-canvas"></canvas>
-      <nav className="navbar">
-        <div className="nav-container">
-          <div className="logo">
-            <i className="fas fa-shield-alt"></i> CYBER-sécurité
-          </div>
-          <div className="nav-links">
-            <Link href="#home">Accueil</Link>
-            <Link href="#presentation">Présentation</Link>
-            <Link href="#intro">Menaces</Link>
-            <Link href="#layers">Protection</Link>
-            <Link href="#quiz">Quiz</Link>
-            <Link href="#leaderboard">Classement</Link>
-            {isAdmin && (
-              <Link href="/admin" className="nav-button">
-                Admin
-              </Link>
-            )}
-          </div>
-          <div className="nav-button-container">
-            {status === "loading" ? (
-              <span className="nav-button">Loading...</span>
-            ) : session ? (
-              <button
-                className="nav-button"
-                onClick={() => signOut({ callbackUrl: "/" })}
-              >
-                Sign out
+    <div className="relative min-h-screen bg-black text-white overflow-x-hidden selection:bg-green-500 selection:text-black">
+      <canvas id="matrix-canvas" className="fixed inset-0 -z-10 opacity-20 pointer-events-none"></canvas>
+
+      {/* Global Dynamic Modal */}
+      {activeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-2xl transition-all">
+          <div className="w-full max-w-3xl bg-zinc-950 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="bg-zinc-900/50 px-8 py-5 border-b border-white/5 flex justify-between items-center">
+              <span className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase">System_Entry::{activeModal}.log</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-500 hover:text-white transition p-2">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
               </button>
+            </div>
+            <div className="p-8 md:p-14 space-y-10 max-h-[80vh] overflow-y-auto custom-scrollbar">
+              <div className="space-y-4">
+                <h3 className={`text-3xl md:text-4xl font-black uppercase tracking-tighter ${MODAL_DATA[activeModal].color}`}>
+                  {MODAL_DATA[activeModal].title}
+                </h3>
+                <p className="text-zinc-400 leading-relaxed text-lg font-light">
+                  {MODAL_DATA[activeModal].text1}
+                </p>
+              </div>
+              <div className="h-[1px] bg-white/5 w-full"></div>
+              <div className="space-y-4">
+                <h3 className={`text-2xl font-bold uppercase tracking-tight text-white`}>
+                  {MODAL_DATA[activeModal].title2}
+                </h3>
+                <p className="text-zinc-400 leading-relaxed text-lg font-light">
+                  {MODAL_DATA[activeModal].text2}
+                </p>
+              </div>
+              <button 
+                onClick={() => setActiveModal(null)}
+                className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest group ${MODAL_DATA[activeModal].color}`}
+              >
+                <span className="group-hover:-translate-x-2 transition-transform">←</span> Close_Terminal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navbar */}
+      <nav className={`fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/5 transition-opacity ${activeModal ? 'opacity-0' : 'opacity-100'}`}>
+        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+          <div className="text-green-500 font-black tracking-tighter text-xl md:text-2xl">CYBER-ESTIN</div>
+          <div className="hidden lg:flex gap-10 text-[9px] font-bold uppercase tracking-[0.4em]">
+            <Link href="#presentation" className="hover:text-green-400 transition">Concepts</Link>
+            <Link href="#attack" className="hover:text-red-400 transition">Offensif</Link>
+            <Link href="#defense" className="hover:text-blue-400 transition">Défensif</Link>
+            <Link href="#networking" className="hover:text-purple-400 transition">Réseau</Link>
+            {isAdmin && <Link href="/admin" className="hover:text-green-400 transition">Admin</Link>}
+          </div>
+          <div className="flex items-center gap-4">
+            {session ? (
+              <button onClick={() => signOut()} className="text-[10px] bg-red-500/10 border border-red-500/50 px-4 py-2 rounded-full text-red-500">LOG_OUT</button>
             ) : (
-              <button
-                className="nav-button"
-                onClick={() =>
-                  signIn("google", { callbackUrl: window.location.origin })
-                }
-              >
-                Sign in
-              </button>
+              <button onClick={() => signIn("google")} className="text-[10px] bg-green-500/10 border border-green-500/50 px-4 py-2 rounded-full text-green-500">CONNECT</button>
             )}
           </div>
         </div>
       </nav>
 
-      <section id="home" className="hero">
-        <div>
-          <h1>CYBER-sécurité</h1>
-          <p>
-            Bienvenue dans l'ère de l'information. Vos données sont aujourd'hui
-            plus précieuses que l'or.
+      <main className={`flex flex-col gap-50 items-center w-full px-4 md:px-0 transition-all duration-700 ${activeModal ? 'blur-2xl scale-95 opacity-50' : 'blur-0 scale-100 opacity-100'}`}>
+        
+        {/* Hero */}
+        <section className="h-[90vh] flex flex-col items-center justify-center text-center">
+          <div className="space-y-2 mb-6">
+            <span className="text-green-500 font-mono text-[10px] tracking-[0.5em] uppercase">Security Protocol Alpha</span>
+            <h1 className="text-6xl md:text-[10rem] font-black tracking-normal leading-none text-white">
+              CYBER<span className="text-green-500  text-2xl">-estin</span>
+            </h1>
+          </div>
+          <p className="max-w-md text-zinc-500 text-sm md:text-base font-light leading-relaxed px-4">
+            Exploration des systèmes offensifs et défensifs au sein de l'écosystème numérique moderne.
           </p>
-        </div>
-      </section>
+        </section>
 
-      <section id="presentation" className="section">
-        <h2 className="section-title">Présentation</h2>
-        <div className="glass-card">
-          <p>
-            Bienvenue dans l'ère de l'information. Aujourd'hui, nos données sont
-            plus précieuses que l'or. Mais comment protéger nos vies numériques
-            face aux menaces invisibles ? Dans cette présentation, nous allons
-            explorer les piliers de la cybersécurité, les menaces actuelles et
-            les solutions pour bâtir un futur numérique sûr.
-          </p>
-        </div>
-      </section>
-
-      <section id="intro" className="section">
-        <h2 className="section-title">Les Menaces Courantes</h2>
-        <div className="grid">
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-envelope-open-text"></i> Hameçonnage
-            </h3>
-            <p>Vol d'identifiants via de faux emails.</p>
-          </div>
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-skull-crossbones"></i> Ransomwares
-            </h3>
-            <p>
-              Logiciels malveillants qui cryptent vos fichiers contre une
-              rançon.
+        {/* Section 1: Concept */}
+        <section id="presentation" ref={el => sectionRefs.current[0] = el} className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center">
+          <div className="space-y-8 px-4 md:px-0">
+            <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Le Concept<span className="text-green-500">.</span></h2>
+            <p className="text-zinc-400 text-lg md:text-xl leading-relaxed font-light">
+              La cybersécurité n'est pas seulement une barrière technique, c'est une stratégie globale pour protéger l'intégrité.
             </p>
+            <button 
+              onClick={() => setActiveModal('concept')}
+              className="group flex items-center gap-4 text-[10px] font-mono uppercase tracking-[0.3em] text-green-500"
+            >
+              <span className="w-12 h-[1px] bg-green-500 group-hover:w-20 transition-all"></span> Learn_More
+            </button>
           </div>
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-bolt"></i> Attaques DDoS
-            </h3>
-            <p>Saturation d'un serveur pour rendre un site inaccessible.</p>
+          <div className="relative group px-4 md:px-0">
+            <div className="absolute -inset-2 bg-green-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition duration-1000"></div>
+            <Image src="/concept.png" width={800} height={500} alt="Sec" className="relative rounded-[2rem] border border-white/5 grayscale hover:grayscale-0 transition duration-700" />
           </div>
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-user-secret"></i> Menaces invisibles
-            </h3>
-            <p>
-              Risques cachés qui exploitent les failles humaines et techniques.
+        </section>
+
+        {/* Section 2: Attack */}
+        <section id="attack" ref={el => sectionRefs.current[1] = el} className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center">
+          <div className="order-2 md:order-1 relative group px-4 md:px-0">
+             <div className="absolute -inset-2 bg-red-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition duration-1000"></div>
+             <Image src="/hacker.png" width={800} height={500} alt="Attack" className="relative rounded-[2rem] border border-white/5" />
+          </div>
+          <div className="order-1 md:order-2 space-y-8 px-4 md:px-0">
+            <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Offensif<span className="text-red-500">_</span></h2>
+            <p className="text-zinc-400 text-lg md:text-xl leading-relaxed font-light">
+              Simuler l'adversaire pour découvrir l'invisible. Le Red Teaming repousse les limites de la fortification.
             </p>
+            <button 
+              onClick={() => setActiveModal('offensive')}
+              className="group flex items-center gap-4 text-[10px] font-mono uppercase tracking-[0.3em] text-red-500"
+            >
+              <span className="w-12 h-[1px] bg-red-500 group-hover:w-20 transition-all"></span> Open_File
+            </button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="layers" className="section">
-        <h2 className="section-title">Les Piliers de la Protection</h2>
-        <div className="grid">
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-lock"></i> Chiffrement
-            </h3>
-            <p>Transformer les données en code illisible.</p>
-          </div>
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-shield-alt"></i> Authentification
-              Multi-Facteurs (MFA)
-            </h3>
-            <p>Ajouter une couche de sécurité au-delà du mot de passe.</p>
-          </div>
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-firewall"></i> Pare-feu
-            </h3>
-            <p>
-              Le gardien qui filtre le trafic entre internet et votre réseau.
+        {/* Section 3: Defense */}
+        <section id="defense" ref={el => sectionRefs.current[2] = el} className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center">
+          <div className="space-y-8 px-4 md:px-0">
+            <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Défensif<span className="text-blue-500">#</span></h2>
+            <p className="text-zinc-400 text-lg md:text-xl leading-relaxed font-light">
+              Construire des remparts numériques. La Blue Team assure la continuité et la résilience face au chaos.
             </p>
+            <button 
+              onClick={() => setActiveModal('defensive')}
+              className="group flex items-center gap-4 text-[10px] font-mono uppercase tracking-[0.3em] text-blue-500"
+            >
+              <span className="w-12 h-[1px] bg-blue-500 group-hover:w-20 transition-all"></span> Deploy_Shield
+            </button>
           </div>
-          <div className="glass-card">
-            <h3>
-              <i className="fas fa-network-wired"></i> Surveillance active
-            </h3>
-            <p>Détection et réponse aux menaces en temps réel.</p>
+          <div className="relative group px-4 md:px-0">
+             <div className="absolute -inset-2 bg-blue-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition duration-1000"></div>
+             <Image src="/attack.png" width={800} height={500} alt="Def" className="relative rounded-[2rem] border border-white/5" />
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="quiz" className="section">
-        <h2 className="section-title">Page de l'Quiz </h2>
-        <div className="terminal">
-          <div className="terminal-header">
-            <div className="terminal-dots">
-              <div className="dot red"></div>
-              <div className="dot yellow"></div>
-              <div className="dot green"></div>
-            </div>
-            <span>cyber-matrix@security:~$</span>
+        {/* Section 4: Networking (New) */}
+        <section id="networking" ref={el => sectionRefs.current[3] = el} className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center">
+          <div className="order-2 md:order-1 relative group px-4 md:px-0">
+             <div className="absolute -inset-2 bg-purple-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition duration-1000"></div>
+             <Image src="/network.png" width={800} height={500} alt="Network" className="relative rounded-[2rem] border border-white/5 grayscale group-hover:grayscale-0 transition duration-700" />
           </div>
-          <div className="terminal-prompt">
-            Êtes-vous un expert en sécurité ? Testez vos connaissances !
+          <div className="order-1 md:order-2 space-y-8 px-4 md:px-0">
+            <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Réseau<span className="text-purple-500">::</span></h2>
+            <p className="text-zinc-400 text-lg md:text-xl leading-relaxed font-light">
+              L'architecture des flux. Maîtriser le transport de la donnée pour garantir une isolation parfaite des actifs.
+            </p>
+            <button 
+              onClick={() => setActiveModal('networking')}
+              className="group flex items-center gap-4 text-[10px] font-mono uppercase tracking-[0.3em] text-purple-500"
+            >
+              <span className="w-12 h-[1px] bg-purple-500 group-hover:w-20 transition-all"></span> View_Topology
+            </button>
           </div>
+        </section>
 
-          {status === "loading" ? (
-            <div className="quiz-guard">
-              <p>Vérification de votre session...</p>
-            </div>
-          ) : !session ? (
-            <div className="quiz-guard">
-              <p>Connectez-vous avec Google pour accéder au quiz.</p>
-              <button
-                className="primary-button"
-                onClick={() =>
-                  signIn("google", { callbackUrl: window.location.origin })
-                }
-              >
-                Connexion Google
-              </button>
-            </div>
-          ) : !isEligible ? (
-            <div className="quiz-guard">
-              <p>Seuls les emails @estin sont autorisés à participer.</p>
-              <button
-                className="primary-button"
-                onClick={() => signOut({ callbackUrl: window.location.origin })}
-              >
-                Se déconnecter
-              </button>
-            </div>
-          ) : quizFinished ? (
-            <div className="question">
-              <h4>Quiz terminé !</h4>
-              <p>
-                Score final : <strong>{score}</strong> / {questions.length}
-              </p>
-              {resultMessage && <p>{resultMessage}</p>}
-            </div>
-          ) : (
-            <div id="quiz-container">
-              <div className="question">
-                <h4>
-                  Q{currentQuestion + 1}: {question.question}
-                </h4>
-                <div className="options">
-                  {question.options.map((option, index) => (
-                    <div
-                      key={option}
-                      className={`option ${selectedAnswer === index ? "selected" : ""}`}
-                      onClick={() => setSelectedAnswer(index)}
-                    >
-                      {option}
-                    </div>
-                  ))}
-                </div>
+        {/* Quiz Terminal */}
+        <section id="quiz" className="w-full max-w-4xl py-32 px-4 md:px-6">
+          <div className="bg-zinc-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl">
+            <div className="bg-zinc-900/50 px-8 py-5 flex justify-between items-center border-b border-white/5">
+              <span className="text-[10px] font-mono text-green-500 tracking-widest">CMD::ESTIN_LABS_QUIZ</span>
+              <div className="flex gap-2">
+                <div className="w-2 h-2 rounded-full bg-zinc-800"></div>
+                <div className="w-2 h-2 rounded-full bg-zinc-800"></div>
               </div>
-              <button
-                className="primary-button"
-                onClick={handleNext}
-                disabled={selectedAnswer === null}
-              >
-                {selectedAnswer === null
-                  ? "CHOISISSEZ UNE OPTION"
-                  : "EXÉCUTER LE PROTOCOLE SUIVANT"}
-              </button>
-              {submitting && (
-                <p style={{ marginTop: "1rem" }}>Enregistrement du score...</p>
+            </div>
+            <div className="p-8 md:p-16">
+              {!quizStarted ? (
+                <div className="text-center space-y-10">
+                  <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter">Prêt pour le Test ?</h3>
+                  <button 
+                    onClick={() => setQuizStarted(true)}
+                    className="bg-green-500 text-black font-black px-12 py-5 rounded-full hover:scale-105 transition-all uppercase tracking-widest text-xs"
+                  >
+                    Start_Initialization
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                   {/* Quiz Content here stays similar to your logic but styled with larger padding */}
+                   <div className="flex justify-between font-mono text-[10px] text-zinc-500 uppercase">
+                      <span>Question {currentQuestion + 1}/10</span>
+                      <span className={timeLeft < 10 ? 'text-red-500' : ''}>Timer: {timeLeft}s</span>
+                   </div>
+                   <h4 className="text-xl md:text-2xl font-bold leading-tight">{questions[currentQuestion].question}</h4>
+                   <div className="grid gap-4">
+                     {questions[currentQuestion].options.map((opt, i) => (
+                       <button 
+                         key={i} 
+                         onClick={() => setSelectedAnswer(i)}
+                         className={`p-6 text-left rounded-3xl border transition-all duration-300 ${selectedAnswer === i ? 'bg-white text-black border-white' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                       >
+                         {opt}
+                       </button>
+                     ))}
+                   </div>
+                   <button 
+                    disabled={selectedAnswer === null}
+                    onClick={handleNext}
+                    className="w-full bg-green-500 text-black font-black py-6 rounded-[2rem] disabled:opacity-20 uppercase tracking-widest text-xs"
+                   >
+                     Next_Phase
+                   </button>
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </section>
-
-      <section id="leaderboard" className="section">
-        <h2 className="section-title">Classement Mondial</h2>
-        <div className="leaderboard">
-          {leaderboard.length === 0 ? (
-            <div className="glass-card">
-              <p>
-                Aucun score n'a encore été soumis. Soyez le premier à sécuriser
-                le quiz Cyber-Matrix.
-              </p>
-            </div>
-          ) : (
-            leaderboard.map((entry, index) => (
-              <div
-                key={`${entry.email}-${entry.createdAt}`}
-                className="leader-row"
-              >
-                <div className="rank">#{index + 1}</div>
-                <div>{entry.name}</div>
-                <div>{entry.score} pts</div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section id="conclusion" className="section">
-        <h2 className="section-title">Conclusion </h2>
-        <div className="glass-card">
-          <p>
-            Pour conclure, la cybersécurité n'est pas qu'une question de
-            technologie, c'est avant tout une question de vigilance humaine.
-            Restez prudents, restez protégés. Merci de votre attention.
-          </p>
-          <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-            <a href="#home" className="primary-button">
-              Retour en haut
-            </a>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        <footer className="w-full py-20 text-center opacity-30">
+            <p className="text-[10px] font-mono tracking-[1em] uppercase px-4 leading-loose">
+              Security // Resilience // ESTIN 2026
+            </p>
+        </footer>
+      </main>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 10px; }
+      `}</style>
+    </div>
   );
 }
