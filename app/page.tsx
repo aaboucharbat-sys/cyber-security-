@@ -17,6 +17,8 @@ type LeaderboardEntry = {
   createdAt: string;
 };
 
+type SubmissionState = "idle" | "loading" | "success" | "error";
+
 // Modal Data Structure
 const MODAL_DATA = {
   concept: {
@@ -69,6 +71,9 @@ export default function Home() {
   const [quizFinished, setQuizFinished] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [submissionState, setSubmissionState] =
+    useState<SubmissionState>("idle");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // FIX: explicit element type on the ref array
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
@@ -142,12 +147,35 @@ export default function Home() {
   const fetchLeaderboard = async () => {
     try {
       const response = await fetch("/api/quiz/leaderboard");
-      const data = (await response.json()) as { leaderboard?: LeaderboardEntry[] };
+      const data = (await response.json()) as {
+        leaderboard?: LeaderboardEntry[];
+      };
       setLeaderboard(data.leaderboard ?? []);
     } catch (e) {
       console.error(e);
     }
   };
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
+  // Timer effect
+  useEffect(() => {
+    if (!quizStarted || quizFinished) return;
+
+    const timerInterval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleNext();
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [quizStarted, quizFinished, currentQuestion]);
 
   const handleNext = () => {
     const nextScore =
@@ -160,13 +188,44 @@ export default function Home() {
     } else {
       setScore(nextScore);
       setQuizFinished(true);
+      fetchLeaderboard();
     }
   };
 
-  // suppress unused warnings — used externally / in admin
-  void fetchLeaderboard;
-  void quizFinished;
-  void leaderboard;
+  const handleSubmitScore = async () => {
+    if (!session?.user?.email) return;
+
+    const userName = session.user.name?.trim() || session.user.email;
+
+    setSubmissionState("loading");
+    try {
+      const response = await fetch("/api/quiz/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: session.user.email,
+          name: userName,
+          score: score,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        success: boolean;
+        leaderboard?: LeaderboardEntry[];
+      };
+
+      if (data.success) {
+        setSubmissionState("success");
+        setHasSubmitted(true);
+        setLeaderboard(data.leaderboard ?? []);
+      } else {
+        setSubmissionState("error");
+      }
+    } catch (error) {
+      console.error("Error submitting score:", error);
+      setSubmissionState("error");
+    }
+  };
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden selection:bg-green-500 selection:text-black">
@@ -308,7 +367,9 @@ export default function Home() {
         {/* Section 1: Concept */}
         <section
           id="presentation"
-          ref={(el) => { sectionRefs.current[0] = el; }}
+          ref={(el) => {
+            sectionRefs.current[0] = el;
+          }}
           className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center"
         >
           <div className="space-y-8 px-4 md:px-0">
@@ -342,7 +403,9 @@ export default function Home() {
         {/* Section 2: Attack */}
         <section
           id="attack"
-          ref={(el) => { sectionRefs.current[1] = el; }}
+          ref={(el) => {
+            sectionRefs.current[1] = el;
+          }}
           className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center"
         >
           <div className="order-2 md:order-1 relative group px-4 md:px-0">
@@ -376,7 +439,9 @@ export default function Home() {
         {/* Section 3: Defense */}
         <section
           id="defense"
-          ref={(el) => { sectionRefs.current[2] = el; }}
+          ref={(el) => {
+            sectionRefs.current[2] = el;
+          }}
           className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center"
         >
           <div className="space-y-8 px-4 md:px-0">
@@ -410,7 +475,9 @@ export default function Home() {
         {/* Section 4: Networking */}
         <section
           id="networking"
-          ref={(el) => { sectionRefs.current[3] = el; }}
+          ref={(el) => {
+            sectionRefs.current[3] = el;
+          }}
           className="w-full max-w-6xl py-32 md:py-48 grid md:grid-cols-2 gap-20 items-center"
         >
           <div className="order-2 md:order-1 relative group px-4 md:px-0">
@@ -459,12 +526,130 @@ export default function Home() {
                   <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter">
                     Prêt pour le Test ?
                   </h3>
+                  {!isEligible && (
+                    <p className="text-red-500 font-mono text-sm">
+                      ⚠ Accès réservé aux utilisateurs @estin.dz
+                    </p>
+                  )}
                   <button
                     onClick={() => setQuizStarted(true)}
-                    className="bg-green-500 text-black font-black px-12 py-5 rounded-full hover:scale-105 transition-all uppercase tracking-widest text-xs"
+                    disabled={!isEligible}
+                    className="bg-green-500 text-black font-black px-12 py-5 rounded-full hover:scale-105 transition-all uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Start_Initialization
                   </button>
+                </div>
+              ) : quizFinished ? (
+                <div className="space-y-10">
+                  {!hasSubmitted ? (
+                    <>
+                      <div className="text-center space-y-8">
+                        <h3 className="text-4xl md:text-6xl font-black text-green-500">
+                          QUIZ TERMINÉ
+                        </h3>
+                        <div className="space-y-2">
+                          <p className="text-zinc-400 font-mono text-sm">
+                            Score Final
+                          </p>
+                          <p className="text-6xl md:text-8xl font-black text-white">
+                            {score}
+                          </p>
+                          <p className="text-zinc-500 text-sm font-mono">
+                            ({score} / 100 points)
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleSubmitScore}
+                        disabled={submissionState === "loading" || !isEligible}
+                        className="w-full bg-green-500 text-black font-black py-6 rounded-[2rem] hover:bg-green-600 transition-all uppercase tracking-widest text-xs disabled:opacity-50"
+                      >
+                        {submissionState === "loading"
+                          ? "Soumission_En_Cours..."
+                          : "Enregistrer_Score"}
+                      </button>
+                      {submissionState === "error" && (
+                        <p className="text-red-500 text-center font-mono text-sm">
+                          Erreur lors de la soumission. Veuillez réessayer.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-8">
+                      <div className="text-center space-y-4 border border-green-500/30 rounded-2xl p-6 bg-green-500/5">
+                        <p className="text-green-500 font-mono text-sm">
+                          ✓ Score Enregistré
+                        </p>
+                        <p className="text-2xl font-black text-white">
+                          {score} points
+                        </p>
+                      </div>
+                      <div className="space-y-4">
+                        <h4 className="text-xl font-bold text-green-400 uppercase">
+                          🏆 Classement En Direct
+                        </h4>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                            <thead>
+                              <tr className="border-b border-white/10 text-zinc-500 font-mono text-[10px]">
+                                <th className="px-3 py-2">Rang</th>
+                                <th className="px-3 py-2">Joueur</th>
+                                <th className="px-3 py-2 text-right">Score</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {leaderboard.slice(0, 10).map((entry, idx) => (
+                                <tr
+                                  key={`${entry.email}-${entry.createdAt}`}
+                                  className={`${
+                                    idx === 0
+                                      ? "bg-yellow-500/10 border-l-4 border-yellow-500"
+                                      : ""
+                                  }`}
+                                >
+                                  <td className="px-3 py-3 font-mono font-bold">
+                                    {idx === 0
+                                      ? "🥇"
+                                      : idx === 1
+                                        ? "🥈"
+                                        : idx === 2
+                                          ? "🥉"
+                                          : `#${idx + 1}`}
+                                  </td>
+                                  <td className="px-3 py-3 truncate">
+                                    <div className="font-semibold text-white">
+                                      {entry.name}
+                                    </div>
+                                    <div className="text-xs text-zinc-500 font-mono">
+                                      {entry.email}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-3 text-right font-black text-green-400">
+                                    {entry.score}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setQuizStarted(false);
+                          setQuizFinished(false);
+                          setCurrentQuestion(0);
+                          setScore(0);
+                          setSelectedAnswer(null);
+                          setTimeLeft(30);
+                          setSubmissionState("idle");
+                          setHasSubmitted(false);
+                        }}
+                        className="w-full bg-zinc-800 text-white font-black py-4 rounded-[2rem] hover:bg-zinc-700 transition-all uppercase tracking-widest text-xs"
+                      >
+                        Nouveau_Quiz
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-8">

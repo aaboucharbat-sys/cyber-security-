@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "name": "Hassan Karim",
+    "email": "hk_dev@estin.dz",
+    "score": 95,
+    "createdAt": "2026-05-04T11:00:00.000Z"
+  },
+  {
+    "name": "Ahmed Boucharb",
+    "email": "aa_boucharbat@estin.dz",
+    "score": 90,
+    "createdAt": "2026-05-04T10:30:00.000Z"
+  },
+  {
+    "name": "Test User",
+    "email": "test_user@estin.dz",
+    "score": 88,
+    "createdAt": "2026-05-04T11:33:45.610Z"
+  },
+  {
+    "name": "Test User",
+    "email": "test_user@estin.dz",
+    "score": 88,
+    "createdAt": "2026-05-04T22:04:01.036Z"
+  },
+  {
+    "name": "Fatima Zara",
+    "email": "fz_test@estin.dz",
+    "score": 85,
+    "createdAt": "2026-05-04T10:35:00.000Z"
+  },
+  {
+    "name": "Leila Amira",
+    "email": "la_estin@estin.dz",
+    "score": 80,
+    "createdAt": "2026-05-04T10:45:00.000Z"
+  },
+  {
+    "name": "Mohamed Ali",
+    "email": "ma_student@estin.dz",
+    "score": 75,
+    "createdAt": "2026-05-04T10:40:00.000Z"
+  }
+]

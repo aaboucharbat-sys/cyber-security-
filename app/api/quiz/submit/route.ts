@@ -10,22 +10,19 @@ export async function POST(request: Request) {
       .toLowerCase();
 
     const name = String(body.name || email).trim();
-
     const score = Number(body.score);
 
     // Validate ESTIN email and score
     if (
       !email ||
-      !email.endsWith("@estin") ||
+      !email.endsWith("@estin.dz") ||
       Number.isNaN(score) ||
-      score < 0
+      score < 0 ||
+      score > 100
     ) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid submission",
-        },
-        { status: 400 }
+        { success: false, error: "Invalid submission" },
+        { status: 400 },
       );
     }
 
@@ -43,17 +40,13 @@ export async function POST(request: Request) {
         success: true,
         leaderboard: leaderboard.slice(0, 10),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error submitting score:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: "Server error while submitting score",
-      },
-      { status: 500 }
+      { success: false, error: "Server error" },
+      { status: 500 },
     );
   }
 }

@@ -47,5 +47,8 @@ export async function addScoreEntry(entry: ScoreEntry): Promise<ScoreEntry[]> {
 
 export async function getLeaderboard(): Promise<ScoreEntry[]> {
   const entries = await readScoreboard();
+  entries.sort(
+    (a, b) => b.score - a.score || a.createdAt.localeCompare(b.createdAt),
+  );
   return entries.slice(0, 10);
 }
