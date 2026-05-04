@@ -52,3 +52,8 @@ export async function getLeaderboard(): Promise<ScoreEntry[]> {
   );
   return entries.slice(0, 10);
 }
+
+export async function resetLeaderboard(): Promise<void> {
+  ensureScoreboardFile();
+  fs.writeFileSync(scoreboardPath, "[]", "utf-8");
+}
