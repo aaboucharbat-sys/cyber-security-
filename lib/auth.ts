@@ -19,12 +19,9 @@ declare module "next-auth/jwt" {
   }
 }
 
-const GOOGLE_CLIENT_ID_FALLBACK =
-  "728490222904-90g1o7uhuprl4gjkrpas02u9acms7qps.apps.googleusercontent.com";
-
-// Admin emails allowed
-export const adminEmails = ["aa_boucharbat@estin.dz"].map((e) =>
-  e.toLowerCase(),
+// Admin emails
+export const adminEmails = ["aa_boucharbat@estin.dz"].map((email) =>
+  email.toLowerCase()
 );
 
 export const authOptions: NextAuthOptions = {
@@ -32,24 +29,29 @@ export const authOptions: NextAuthOptions = {
 
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
 
+  session: {
+    strategy: "jwt",
+  },
+
   callbacks: {
-    // Allow sign in only if email exists
     async signIn({ user }) {
       if (!user.email) return false;
+
+      // Optional: restrict to ESTIN emails only
+      // return user.email.toLowerCase().endsWith("@estin.dz");
+
       return true;
     },
 
-    // Always redirect to home
     async redirect({ baseUrl }) {
       return baseUrl;
     },
 
-    // Put data into JWT
     async jwt({ token, user }) {
       if (user?.email) {
         const email = user.email.toLowerCase();
@@ -61,12 +63,11 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // Send data to client session
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
         session.user.email = token.email as string;
-        session.user.isAdmin = token.isAdmin as boolean;
+        session.user.isAdmin = token.isAdmin ?? false;
       }
 
       return session;
@@ -77,4 +78,4 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/signin",
     error: "/auth/error",
   },
-};
+};  
